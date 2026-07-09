@@ -39,7 +39,11 @@ async function run() {
             res.send(result);
         });
 
-        app.get("/doctors/:id", async (req, res) => {
+        app.get("/doctors/:id", (req, res, next) =>{
+            const header = req.headers.authorization
+            console.log(header)
+            next()
+        },async (req, res) => {
             const { id } = req.params
 
             const result = await doctorsCollection.findOne({ _id: new ObjectId(id) })
