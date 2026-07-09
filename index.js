@@ -41,8 +41,12 @@ async function run() {
 
         app.get("/doctors/:id", (req, res, next) =>{
             const header = req.headers.authorization
-            console.log(header)
-            next()
+            if(header === "logged in"){
+                next()
+            }else{
+                res.status(401).json({message: "Unauthorize"})
+            }
+            
         },async (req, res) => {
             const { id } = req.params
 
