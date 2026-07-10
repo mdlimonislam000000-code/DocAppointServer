@@ -15,7 +15,6 @@ const PORT = process.env.PORT
 app.use(cors())
 app.use(express.json())
 
-
 const client = new MongoClient(uri, {
     serverApi: {
         version: ServerApiVersion.v1,
@@ -24,15 +23,13 @@ const client = new MongoClient(uri, {
     }
 })
 
-
 const JWKS = createRemoteJWKSet(
     new URL(`${process.env.CLIENT_URL}/api/auth/jwks`)
 )
 
-
 async function run() {
 
-    const verifyToken =  async (req, res, next) => {
+    const verifyToken = async (req, res, next) => {
         const authHeader = req?.headers.authorization
         if (!authHeader) {
             return res.status(401).json({ message: "Unauthorized" })
@@ -59,6 +56,14 @@ async function run() {
         const database = client.db("docAppointment");
         const doctorsCollection = database.collection("doctors");
         const bookingsCollection = database.collection("bookings");
+        const usersCollection = database.collection("user");
+
+        app.patch('/user/update/:id', verifyToken, async (req, res) => {
+            const { id } = req.params
+            const updateData = req.body
+            const result = await usersCollection.updateOne({ _id: new ObjectId(id) }, { $set: updateData })
+            res.json(result)
+        })
 
 
         app.get("/doctors", async (req, res) => {
@@ -106,7 +111,6 @@ async function run() {
     }
 }
 run().catch(console.dir);
-
 
 app.get('/', (req, res) => {
     res.send('server is running fine !')
