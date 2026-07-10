@@ -5,6 +5,7 @@ const dotenv = require('dotenv')
 const express = require('express')
 const cors = require('cors')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const { createRemoteJWKSet, jwtVerify } = require("jose-cjs")
 dotenv.config()
 
 const uri = process.env.MONGODB_URI
@@ -24,8 +25,34 @@ const client = new MongoClient(uri, {
 })
 
 
+const JWKS = createRemoteJWKSet(
+    new URL("http://localhost:3000/api/auth/jwks")
+)
+
 
 async function run() {
+
+    const verifyToken =  async (req, res, next) => {
+        const authHeader = req?.headers.authorization
+        if (!authHeader) {
+            return res.status(401).json({ message: "Unauthorized" })
+        }
+        const token = authHeader.split(" ")[1]
+        if (!token) {
+            return res.status(401).json({ message: "Unauthorized" })
+        }
+
+        try {
+            const { payload } = await jwtVerify(token, JWKS)
+            console.log(payload)
+            next()
+
+        } catch (error) {
+            return res.status(403).json({ message: "Forbidden" })
+        }
+
+    }
+
     try {
         await client.connect()
 
@@ -39,18 +66,7 @@ async function run() {
             res.send(result);
         });
 
-        app.get("/doctors/:id", (req, res, next) =>{
-            const header = req.headers.authorization
-            
-            console.log(header)
-            next()
-            // if(header === "logged in"){
-            //     next()
-            // }else{
-            //     res.status(401).json({message: "Unauthorize"})
-            // }
-            
-        },async (req, res) => {
+        app.get("/doctors/:id", verifyToken, async (req, res) => {
             const { id } = req.params
 
             const result = await doctorsCollection.findOne({ _id: new ObjectId(id) })
@@ -71,15 +87,15 @@ async function run() {
 
         app.delete('/booking/:userId', async (req, res) => {
             const { userId } = req.params
-            const result = await bookingsCollection.deleteOne({_id: new ObjectId(userId)})
+            const result = await bookingsCollection.deleteOne({ _id: new ObjectId(userId) })
             res.send(result)
         })
 
-        app.patch('/booking/:id', async (req, res) =>{
+        app.patch('/booking/:id', async (req, res) => {
             const { id } = req.params
             const updateData = req.body
 
-            const result = await bookingsCollection.updateOne({_id: new ObjectId(id)}, {$set: updateData})
+            const result = await bookingsCollection.updateOne({ _id: new ObjectId(id) }, { $set: updateData })
             res.json(result)
         })
 
